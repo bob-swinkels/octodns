@@ -53,6 +53,10 @@ class CloudflareProvider(BaseProvider):
         #
         # See: https://support.cloudflare.com/hc/en-us/articles/115000830351
         cdn: false
+        # Automatically change proxy records synced to Cloudflare through
+        # Cloudflare. This only works for supported record types (A, AAAA,
+        # CNAME).
+        proxied: false
         # Optional. Default: 4. Number of times to retry if a 429 response
         # is received.
         retry_count: 4
@@ -81,9 +85,9 @@ class CloudflareProvider(BaseProvider):
     MIN_TTL = 120
     TIMEOUT = 15
 
-    def __init__(self, id, email=None, token=None, cdn=False, retry_count=4,
-                 retry_period=300, zones_per_page=50, records_per_page=100,
-                 *args, **kwargs):
+    def __init__(self, id, email=None, token=None, cdn=False, proxied=False,
+                 retry_count=4, retry_period=300, zones_per_page=50,
+                 records_per_page=100, *args, **kwargs):
         self.log = getLogger('CloudflareProvider[{}]'.format(id))
         self.log.debug('__init__: id=%s, email=%s, token=***, cdn=%s', id,
                        email, cdn)
@@ -102,6 +106,7 @@ class CloudflareProvider(BaseProvider):
                 'Authorization': 'Bearer {}'.format(token),
             })
         self.cdn = cdn
+        self.proxied = proxied
         self.retry_count = retry_count
         self.retry_period = retry_period
         self.zones_per_page = zones_per_page
@@ -473,7 +478,7 @@ class CloudflareProvider(BaseProvider):
     def _record_is_proxied(self, record):
         return (
             not self.cdn and
-            record._octodns.get('cloudflare', {}).get('proxied', False)
+            record._octodns.get('cloudflare', {}).get('proxied', self.proxied)
         )
 
     def _gen_data(self, record):
